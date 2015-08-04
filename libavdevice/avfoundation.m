@@ -320,18 +320,16 @@ static int configure_video_device(AVFormatContext *s, AVCaptureDevice *video_dev
         goto unsupported_format;
     }
 
-    if (!selected_range) {
-        av_log(s, AV_LOG_ERROR, "Selected framerate (%f) is not supported by the device\n",
-            framerate);
-        goto unsupported_format;
-    }
-
     if ([video_device lockForConfiguration:NULL] == YES) {
-        NSValue *min_frame_duration = [selected_range valueForKey:@"minFrameDuration"];
-
         [video_device setValue:selected_format forKey:@"activeFormat"];
-        [video_device setValue:min_frame_duration forKey:@"activeVideoMinFrameDuration"];
-        [video_device setValue:min_frame_duration forKey:@"activeVideoMaxFrameDuration"];
+
+        if (selected_range) {
+            NSValue *min_frame_duration = [selected_range valueForKey:@"minFrameDuration"];
+            [video_device setValue:min_frame_duration forKey:@"activeVideoMinFrameDuration"];
+            [video_device setValue:min_frame_duration forKey:@"activeVideoMaxFrameDuration"];
+        }
+        else
+            av_log(s, AV_LOG_WARNING, "Selected framerate (%f) is not supported by the device\n", framerate);
     } else {
         av_log(s, AV_LOG_ERROR, "Could not lock device for configuration");
         return AVERROR(EINVAL);
@@ -469,8 +467,13 @@ static int add_video_device(AVFormatContext *s, AVCaptureDevice *video_device)
 
     ctx->pixel_format          = pxl_fmt_spec.ff_id;
     pixel_format = [NSNumber numberWithUnsignedInt:pxl_fmt_spec.avf_id];
-    capture_dict = [NSDictionary dictionaryWithObject:pixel_format
-                                               forKey:(id)kCVPixelBufferPixelFormatTypeKey];
+    if ([video_device hasMediaType:AVMediaTypeMuxed])
+        capture_dict = @{
+            (id)AVVideoScalingModeKey : AVVideoScalingModeResizeAspect,
+            (id)kCVPixelBufferPixelFormatTypeKey : pixel_format
+        };
+    else
+        capture_dict = @{ (id)kCVPixelBufferPixelFormatTypeKey : pixel_format};
 
     [ctx->video_output setVideoSettings:capture_dict];
     [ctx->video_output setAlwaysDiscardsLateVideoFrames:YES];
@@ -668,7 +671,7 @@ static int avf_read_header(AVFormatContext *s)
     AVCaptureDevice *video_device = nil;
     AVCaptureDevice *audio_device = nil;
     // Find capture device
-    NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+    NSArray *devices = [[AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo] arrayByAddingObjectsFromArray:[AVCaptureDevice devicesWithMediaType:AVMediaTypeMuxed]];
     ctx->num_video_devices = [devices count];
 
     ctx->first_pts          = av_gettime();
