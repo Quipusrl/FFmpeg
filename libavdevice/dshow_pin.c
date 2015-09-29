@@ -347,7 +347,7 @@ libAVMemInputPin_Receive(libAVMemInputPin *this, IMediaSample *sample)
     ctx = s->priv_data;
     index = pin->filter->stream_index;
 
-    av_log(NULL, AV_LOG_VERBOSE, "dshow passing through packet of type %s size %8d "
+    av_log(NULL, AV_LOG_DEBUG, "dshow passing through packet of type %s size %8d "
         "timestamp %"PRId64" orig timestamp %"PRId64" graph timestamp %"PRId64" diff %"PRId64" %s\n",
         devtypename, buf_size, curtime, orig_curtime, graphtime, graphtime - orig_curtime, ctx->device_name[devtype]);
     pin->filter->callback(priv_data, index, buf, buf_size, curtime, devtype);
