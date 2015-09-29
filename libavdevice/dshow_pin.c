@@ -340,7 +340,7 @@ libAVMemInputPin_Receive(libAVMemInputPin *this, IMediaSample *sample)
     priv_data = pin->filter->priv_data;
     index = pin->filter->stream_index;
 
-    av_log(NULL, AV_LOG_VERBOSE, "dshow passing through packet of type %s size %6d timestamp %"PRId64" orig timestamp %"PRId64"\n",
+    av_log(NULL, AV_LOG_DEBUG, "dshow passing through packet of type %s size %6d timestamp %"PRId64" orig timestamp %"PRId64"\n",
            devtypename, buf_size, curtime, orig_curtime);
     pin->filter->callback(priv_data, index, buf, buf_size, curtime, devtype);
 
