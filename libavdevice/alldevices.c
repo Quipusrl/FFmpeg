@@ -70,6 +70,7 @@ void avdevice_register_all(void)
     REGISTER_INDEV   (VFWCAP,           vfwcap);
     REGISTER_INDEV   (X11GRAB,          x11grab);
     REGISTER_INDEV   (X11GRAB_XCB,      x11grab_xcb);
+    REGISTER_INDEV   (EPIPHAN,          epiphan);
     REGISTER_OUTDEV  (XV,               xv);
 
     /* external libraries */
