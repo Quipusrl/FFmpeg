@@ -223,8 +223,6 @@ static int epiphan_read_packet(AVFormatContext *s, AVPacket *pkt) {
     if (delay > 0)
         av_usleep(delay);
 
-//    pkt->pts = ctx->curtime;
-
     return pkt->size;
 }
 
