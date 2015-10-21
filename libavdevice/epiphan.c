@@ -85,6 +85,7 @@ static int epiphan_read_close(AVFormatContext *s) {
     struct epiphan_ctx *ctx = s->priv_data;
 
     if (ctx->grabber) {
+        ctx->pfn.FrmGrab_Release(ctx->grabber, ctx->frame);
         ctx->pfn.FrmGrab_Stop(ctx->grabber);
         ctx->pfn.FrmGrab_Close(ctx->grabber);
         ctx->pfn.FrmGrab_Deinit();
@@ -162,6 +163,7 @@ static int epiphan_read_header(AVFormatContext *avctx) {
         goto error;
     }
 
+    ctx->frame = NULL;
     ctx->pfn.FrmGrab_Start(ctx->grabber);
 
     ret = av_parse_video_rate(&framerate_q, ctx->framerate);
@@ -204,10 +206,11 @@ static int epiphan_read_packet(AVFormatContext *s, AVPacket *pkt) {
     struct epiphan_ctx *ctx = s->priv_data;
     int64_t delay;
 
+    /* release the previous frame, FrmGrab_Release ignores NULL */
+    ctx->pfn.FrmGrab_Release(ctx->grabber, ctx->frame);
+
     if (!(ctx->frame = ctx->pfn.FrmGrab_Frame(ctx->grabber, ctx->pixel_format_ep, NULL)))
         return AVERROR(EIO);
-
-    ctx->pfn.FrmGrab_Release(ctx->grabber, ctx->frame);
 
     av_init_packet(pkt);
     pkt->data = ctx->frame->pixbuf;
