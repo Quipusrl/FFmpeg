@@ -89,6 +89,15 @@ static int epiphan_read_close(AVFormatContext *s) {
         ctx->pfn.FrmGrab_Stop(ctx->grabber);
         ctx->pfn.FrmGrab_Close(ctx->grabber);
         ctx->pfn.FrmGrab_Deinit();
+
+        if (ctx->sws_context)
+            sws_freeContext(ctx->sws_context);
+        if (ctx->source_frame)
+            av_free(ctx->source_frame);
+        if (ctx->scaled_frame)
+            av_free(ctx->scaled_frame);
+        if (ctx->frame_buffer)
+            av_free(ctx->frame_buffer);
     }
 
     if (ctx->hLib)
@@ -99,7 +108,6 @@ static int epiphan_read_close(AVFormatContext *s) {
 
 static int epiphan_read_header(AVFormatContext *avctx) {
     struct epiphan_ctx *ctx = avctx->priv_data;
-    V2U_VideoMode vm;
     AVStream *st;
     AVCodecContext *codec;
     AVRational framerate_q;
@@ -126,6 +134,9 @@ static int epiphan_read_header(AVFormatContext *avctx) {
     DLSYM(FrmGrab_SetMaxFps);
 
     ctx->pfn.FrmGrab_Init();
+    ctx->source_frame = ctx->scaled_frame = NULL;
+    ctx->frame_buffer = NULL;
+    ctx->sws_context = NULL;
 
     if (ctx->list_devices) {
         FrmGrabber* grabbers[MAX_GRABBERS];
@@ -147,10 +158,10 @@ static int epiphan_read_header(AVFormatContext *avctx) {
         goto error;
     }
 
-    if (ctx->pfn.FrmGrab_DetectVideoMode(ctx->grabber, &vm))
-        av_log(avctx, AV_LOG_INFO, "Detected %dx%d %d.%d Hz\n", vm.width, vm.height,
-                                                                (vm.vfreq + 50) / 1000,
-                                                                ((vm.vfreq + 50) % 1000) / 100);
+    if (ctx->pfn.FrmGrab_DetectVideoMode(ctx->grabber, &ctx->videomode))
+        av_log(avctx, AV_LOG_INFO, "Detected %dx%d %d.%d Hz\n", ctx->videomode.width, ctx->videomode.height,
+                                                                (ctx->videomode.vfreq + 50) / 1000,
+                                                                ((ctx->videomode.vfreq + 50) % 1000) / 100);
     else {
         av_log(avctx, AV_LOG_ERROR, "No signal detected\n");
         goto error;
@@ -185,9 +196,31 @@ static int epiphan_read_header(AVFormatContext *avctx) {
     codec->time_base = av_inv_q(framerate_q);
     codec->codec_type = AVMEDIA_TYPE_VIDEO;
     codec->codec_id = AV_CODEC_ID_RAWVIDEO;
-    codec->width  = vm.width;
-    codec->height = vm.height;
     codec->pix_fmt = ctx->pixel_format;
+
+    if (ctx->width && ctx->height && ((ctx->width != ctx->videomode.width) ||
+                                      (ctx->height != ctx->videomode.height))) {
+        double source_ratio = ctx->videomode.width / (double) ctx->videomode.height;
+        double dest_ratio = ctx->width / (double) ctx->height;
+
+        if (source_ratio > dest_ratio)
+            ctx->height = ctx->width / source_ratio;
+        else
+            ctx->width = ctx->height * source_ratio;
+
+        codec->width  = ctx->width;
+        codec->height = ctx->height;
+
+        ctx->source_frame = av_frame_alloc();
+        ctx->scaled_frame = av_frame_alloc();
+        ctx->scaled_size = avpicture_get_size(ctx->pixel_format, ctx->width, ctx->height);
+        ctx->frame_buffer = av_malloc(ctx->scaled_size);
+        avpicture_fill((AVPicture *) ctx->scaled_frame, ctx->frame_buffer, ctx->pixel_format, ctx->width, ctx->height);
+    }
+    else {
+        codec->width  = ctx->videomode.width;
+        codec->height = ctx->videomode.height;
+    }
 
     ctx->frame_time = av_rescale_q(1, codec->time_base, AV_TIME_BASE_Q);
     ctx->curtime = av_gettime();
@@ -213,9 +246,28 @@ static int epiphan_read_packet(AVFormatContext *s, AVPacket *pkt) {
         return AVERROR(EIO);
 
     av_init_packet(pkt);
-    pkt->data = ctx->frame->pixbuf;
-    pkt->size = ctx->frame->imagelen;
     pkt->flags |= AV_PKT_FLAG_KEY;
+
+    if (ctx->scaled_frame) {
+        /* what if frame.mode becomes different than ctx->videomode? */
+        ctx->sws_context = sws_getCachedContext(ctx->sws_context, ctx->frame->mode.width, ctx->frame->mode.height,
+                                                ctx->pixel_format, ctx->width, ctx->height, ctx->pixel_format, SWS_BILINEAR,
+                                                NULL, NULL, NULL);
+
+        avpicture_fill((AVPicture *) ctx->source_frame, ctx->frame->pixbuf, ctx->pixel_format,
+                       ctx->frame->mode.width, ctx->frame->mode.height);
+
+        if (!sws_scale(ctx->sws_context, ctx->source_frame->data,  ctx->source_frame->linesize, 0,
+                       ctx->frame->mode.height, ctx->scaled_frame->data, ctx->scaled_frame->linesize))
+            return AVERROR(EIO);
+
+        pkt->data = ctx->scaled_frame->data[0];
+        pkt->size = ctx->scaled_size;
+    }
+    else {
+        pkt->data = ctx->frame->pixbuf;
+        pkt->size = ctx->frame->imagelen;
+    }
 
     /* looks like FrmGrab_SetMaxFps() does not work as expected */
     ctx->curtime += ctx->frame_time;
@@ -228,6 +280,7 @@ static int epiphan_read_packet(AVFormatContext *s, AVPacket *pkt) {
 
 #define OFFSET(x) offsetof(struct epiphan_ctx, x)
 static const AVOption options[] = {
+    { "video_size", "set video size given a string such as 640x480 or hd720.", OFFSET(width), AV_OPT_TYPE_IMAGE_SIZE, {.str = NULL}, 0, 0, AV_OPT_FLAG_DECODING_PARAM },
     { "pixel_format", "set video pixel format", OFFSET(pixel_format), AV_OPT_TYPE_PIXEL_FMT, {.i64 = AV_PIX_FMT_YUV420P}, -1, INT_MAX, AV_OPT_FLAG_DECODING_PARAM },
     { "framerate", "set video frame rate", OFFSET(framerate), AV_OPT_TYPE_STRING, {.str = "30"}, 0, 0, AV_OPT_FLAG_DECODING_PARAM },
     { "list_devices", "list available devices", OFFSET(list_devices), AV_OPT_TYPE_INT, {.i64=0}, 0, 1, AV_OPT_FLAG_DECODING_PARAM, "list_devices" },

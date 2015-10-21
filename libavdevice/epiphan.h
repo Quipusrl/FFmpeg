@@ -72,6 +72,8 @@ typedef struct _FrmGrabber FrmGrabber;
 #define V2U_GRABFRAME_FORMAT_ARGB32     0x00000B00
 
 #include "libavformat/avformat.h"
+#include "libswscale/swscale.h"
+#include "libavutil/frame.h"
 
 typedef void (*imp_FrmGrab_Init)(void);
 typedef void (*imp_FrmGrab_Deinit)(void);
@@ -110,12 +112,18 @@ struct epiphan_ctx {
     int list_devices;
     enum AVPixelFormat pixel_format;
     char *framerate;
+    int width, height;
     int64_t curtime;
     int64_t frame_time;
     FrmGrabLib pfn;
     FrmGrabber *grabber;
+    V2U_VideoMode videomode;
     V2U_GrabFrame2 *frame;
     V2U_UINT32 pixel_format_ep;
+    AVFrame *source_frame, *scaled_frame;
+    uint8_t *frame_buffer;
+    int scaled_size;
+    struct SwsContext *sws_context;
 };
 
 #define AVDEVICE_EPIPHAN_H
