@@ -131,7 +131,7 @@ static int epiphan_read_header(AVFormatContext *avctx) {
         FrmGrabber* grabbers[MAX_GRABBERS];
         int count = ctx->pfn.FrmGrabLocal_OpenAll(grabbers, MAX_GRABBERS);
 
-        av_log(avctx, AV_LOG_INFO, "Epiphan grabber devices\n");
+        av_log(avctx, AV_LOG_INFO, "Epiphan grabber devices:\n");
         for (int i = 0; i < count; i++) {
             av_log(avctx, AV_LOG_INFO, "%s: \"%s\"\n", ctx->pfn.FrmGrab_GetProductName(grabbers[i]),
                    ctx->pfn.FrmGrab_GetId(grabbers[i]));
