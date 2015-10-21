@@ -87,9 +87,7 @@ static int epiphan_read_close(AVFormatContext *s) {
     if (ctx->grabber) {
         ctx->pfn.FrmGrab_Stop(ctx->grabber);
         ctx->pfn.FrmGrab_Close(ctx->grabber);
-#ifndef _WIN32
         ctx->pfn.FrmGrab_Deinit();
-#endif
     }
 
     if (ctx->hLib)
@@ -112,12 +110,8 @@ static int epiphan_read_header(AVFormatContext *avctx) {
         return ret;
     }
 
-    /* no need to call FrmGrab_Init/FrmGrab_Deinit on win32 */
-#ifndef _WIN32
     DLSYM(FrmGrab_Init);
-    ctx->pfn.FrmGrab_Init();
     DLSYM(FrmGrab_Deinit);
-#endif
     DLSYM(FrmGrabLocal_OpenAll);
     DLSYM(FrmGrabLocal_OpenSN);
     DLSYM(FrmGrab_Close);
@@ -129,6 +123,8 @@ static int epiphan_read_header(AVFormatContext *avctx) {
     DLSYM(FrmGrab_GetProductName);
     DLSYM(FrmGrab_DetectVideoMode);
     DLSYM(FrmGrab_SetMaxFps);
+
+    ctx->pfn.FrmGrab_Init();
 
     if (ctx->list_devices) {
         FrmGrabber* grabbers[MAX_GRABBERS];
