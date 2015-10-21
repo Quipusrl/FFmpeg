@@ -257,7 +257,7 @@ static int epiphan_read_packet(AVFormatContext *s, AVPacket *pkt) {
         avpicture_fill((AVPicture *) ctx->source_frame, ctx->frame->pixbuf, ctx->pixel_format,
                        ctx->frame->mode.width, ctx->frame->mode.height);
 
-        if (!sws_scale(ctx->sws_context, ctx->source_frame->data,  ctx->source_frame->linesize, 0,
+        if (!sws_scale(ctx->sws_context, (const uint8_t * const *) ctx->source_frame->data,  ctx->source_frame->linesize, 0,
                        ctx->frame->mode.height, ctx->scaled_frame->data, ctx->scaled_frame->linesize))
             return AVERROR(EIO);
 
