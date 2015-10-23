@@ -222,8 +222,8 @@ static int epiphan_read_header(AVFormatContext *avctx) {
         codec->height = ctx->videomode.height;
     }
 
+    ctx->curtime = AV_NOPTS_VALUE;
     ctx->frame_time = av_rescale_q(1, codec->time_base, AV_TIME_BASE_Q);
-    ctx->curtime = av_gettime();
     avpriv_set_pts_info(st, 64, framerate_q.den, framerate_q.num);
 
     ret = 0;
@@ -237,7 +237,33 @@ error:
 
 static int epiphan_read_packet(AVFormatContext *s, AVPacket *pkt) {
     struct epiphan_ctx *ctx = s->priv_data;
-    int64_t delay;
+
+    av_init_packet(pkt);
+
+    /* we need at least one captuer frame */
+    if (ctx->curtime != AV_NOPTS_VALUE) {
+        int64_t delay;
+        ctx->curtime += ctx->frame_time;
+        delay = ctx->curtime - av_gettime();
+
+        /* frame drop, return previous frame */
+        if (delay < 0) {
+            if (ctx->scaled_frame) {
+                pkt->data = ctx->scaled_frame->data[0];
+                pkt->size = ctx->scaled_size;
+            }
+            else {
+                pkt->data = ctx->frame->pixbuf;
+                pkt->size = ctx->frame->imagelen;
+            }
+            pkt->pts = ctx->curtime;
+            return pkt->size;
+        }
+
+        /* we need to wait before delivering a new frame */
+        if (delay > 0)
+            av_usleep(delay);
+    }
 
     /* release the previous frame, FrmGrab_Release ignores NULL */
     ctx->pfn.FrmGrab_Release(ctx->grabber, ctx->frame);
@@ -245,7 +271,6 @@ static int epiphan_read_packet(AVFormatContext *s, AVPacket *pkt) {
     if (!(ctx->frame = ctx->pfn.FrmGrab_Frame(ctx->grabber, ctx->pixel_format_ep, NULL)))
         return AVERROR(EIO);
 
-    av_init_packet(pkt);
     pkt->flags |= AV_PKT_FLAG_KEY;
 
     if (ctx->scaled_frame) {
@@ -269,11 +294,8 @@ static int epiphan_read_packet(AVFormatContext *s, AVPacket *pkt) {
         pkt->size = ctx->frame->imagelen;
     }
 
-    /* looks like FrmGrab_SetMaxFps() does not work as expected */
-    ctx->curtime += ctx->frame_time;
-    delay = ctx->curtime - av_gettime();
-    if (delay > 0)
-        av_usleep(delay);
+    if (ctx->curtime == AV_NOPTS_VALUE)
+        ctx->curtime = av_gettime();
 
     return pkt->size;
 }
