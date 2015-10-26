@@ -239,6 +239,7 @@ static int epiphan_read_packet(AVFormatContext *s, AVPacket *pkt) {
     struct epiphan_ctx *ctx = s->priv_data;
 
     av_init_packet(pkt);
+    pkt->flags |= AV_PKT_FLAG_KEY;
 
     /* we need at least one captuer frame */
     if (ctx->curtime != AV_NOPTS_VALUE) {
@@ -271,8 +272,6 @@ static int epiphan_read_packet(AVFormatContext *s, AVPacket *pkt) {
     if (!(ctx->frame = ctx->pfn.FrmGrab_Frame(ctx->grabber, ctx->pixel_format_ep, NULL)))
         return AVERROR(EIO);
 
-    pkt->flags |= AV_PKT_FLAG_KEY;
-
     if (ctx->scaled_frame) {
         /* what if frame.mode becomes different than ctx->videomode? */
         ctx->sws_context = sws_getCachedContext(ctx->sws_context, ctx->frame->mode.width, ctx->frame->mode.height,
@@ -297,6 +296,7 @@ static int epiphan_read_packet(AVFormatContext *s, AVPacket *pkt) {
     if (ctx->curtime == AV_NOPTS_VALUE)
         ctx->curtime = av_gettime();
 
+    pkt->pts = ctx->curtime;
     return pkt->size;
 }
 
