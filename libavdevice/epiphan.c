@@ -224,7 +224,7 @@ static int epiphan_read_header(AVFormatContext *avctx) {
 
     ctx->curtime = AV_NOPTS_VALUE;
     ctx->frame_time = av_rescale_q(1, codec->time_base, AV_TIME_BASE_Q);
-    avpriv_set_pts_info(st, 64, framerate_q.den, framerate_q.num);
+    avpriv_set_pts_info(st, 64, 1, 1000000);  /* 64 bits pts in us */
 
     ret = 0;
 
