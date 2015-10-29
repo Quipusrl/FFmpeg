@@ -2608,7 +2608,7 @@ xv_outdev_deps="X11_extensions_Xvlib_h XvGetPortAttribute"
 xv_outdev_extralibs="-lXv -lX11 -lXext"
 x11grab_indev_deps="x11grab"
 x11grab_xcb_indev_deps="libxcb"
-epiphan_indev_deps="epiphan"
+epiphan_indev_deps="epiphan swscale"
 
 # protocols
 bluray_protocol_deps="libbluray"
@@ -5675,6 +5675,7 @@ enabled subtitles_filter    && prepend avfilter_deps "avformat avcodec"
 enabled uspp_filter         && prepend avfilter_deps "avcodec"
 
 enabled lavfi_indev         && prepend avdevice_deps "avfilter"
+enabled epiphan_indev       && prepend avdevice_deps "swscale"
 
 enabled opus_decoder    && prepend avcodec_deps "swresample"
 
