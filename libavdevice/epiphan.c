@@ -153,7 +153,7 @@ static int epiphan_read_header(AVFormatContext *avctx) {
         goto error;
     }
 
-    if (!avctx->filename || !(ctx->grabber = ctx->pfn.FrmGrabLocal_OpenSN(avctx->filename))) {
+    if (!avctx->filename[0] || !(ctx->grabber = ctx->pfn.FrmGrabLocal_OpenSN(avctx->filename))) {
         av_log(avctx, AV_LOG_INFO, "Unable to open the selected device\n");
         goto error;
     }
