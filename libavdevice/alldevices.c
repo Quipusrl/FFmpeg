@@ -63,6 +63,7 @@ static void register_all(void)
     REGISTER_INOUTDEV(V4L2,             v4l2);
     REGISTER_INDEV   (VFWCAP,           vfwcap);
     REGISTER_INDEV   (XCBGRAB,          xcbgrab);
+    REGISTER_INDEV   (EPIPHAN,          epiphan);
     REGISTER_OUTDEV  (XV,               xv);
 
     /* external libraries */

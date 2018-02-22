@@ -299,6 +299,7 @@ External library support:
   --disable-sdl2           disable sdl2 [autodetect]
   --disable-securetransport disable Secure Transport, needed for TLS support
                            on OSX if openssl and gnutls are not used [autodetect]
+  --enable-epiphan         enable Epiphan [no]
   --disable-xlib           disable xlib [autodetect]
   --disable-zlib           disable zlib [autodetect]
 
@@ -1560,6 +1561,7 @@ EXTERNAL_LIBRARY_GPL_LIST="
 
 EXTERNAL_LIBRARY_NONFREE_LIST="
     decklink
+    epiphan
     libndi_newtek
     libfdk_aac
     openssl
@@ -3096,6 +3098,7 @@ libndi_newtek_outdev_deps="libndi_newtek"
 libndi_newtek_outdev_extralibs="-lndi"
 dshow_indev_deps="IBaseFilter"
 dshow_indev_extralibs="-lpsapi -lole32 -lstrmiids -luuid -loleaut32 -lshlwapi"
+epiphan_indev_deps="epiphan swscale"
 fbdev_indev_deps="linux_fb_h"
 fbdev_outdev_deps="linux_fb_h"
 gdigrab_indev_deps="CreateDIBSection"
@@ -6084,6 +6087,8 @@ enabled rkmpp             && { { require_pkg_config rockchip_mpp rockchip_mpp ro
                                { enabled libdrm ||
                                  die "ERROR: rkmpp requires --enable-libdrm"; }
                              }
+enabled epiphan_indev     && { { check_lib2 "windows.h" LoadLibrary; } || { check_lib2 "dlfcn.h" dlopen -ldl; } ||
+                                 die "ERROR: LoadLibrary/dlopen not found for epiphan"; }
 
 if enabled gcrypt; then
     GCRYPT_CONFIG="${cross_prefix}libgcrypt-config"
@@ -6691,6 +6696,7 @@ enabled uspp_filter         && prepend avfilter_deps "avcodec"
 enabled zoompan_filter      && prepend avfilter_deps "swscale"
 
 enabled lavfi_indev         && prepend avdevice_deps "avfilter"
+enabled epiphan_indev       && prepend avdevice_deps "swscale"
 
 enabled opus_decoder    && prepend avcodec_deps "swresample"
 
