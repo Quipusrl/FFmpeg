@@ -3098,6 +3098,7 @@ libndi_newtek_outdev_deps="libndi_newtek"
 libndi_newtek_outdev_extralibs="-lndi"
 dshow_indev_deps="IBaseFilter"
 dshow_indev_extralibs="-lpsapi -lole32 -lstrmiids -luuid -loleaut32 -lshlwapi"
+epiphan_deps_any="libdl LoadLibrary"
 epiphan_indev_deps="epiphan swscale"
 fbdev_indev_deps="linux_fb_h"
 fbdev_outdev_deps="linux_fb_h"
@@ -6087,8 +6088,6 @@ enabled rkmpp             && { { require_pkg_config rockchip_mpp rockchip_mpp ro
                                { enabled libdrm ||
                                  die "ERROR: rkmpp requires --enable-libdrm"; }
                              }
-enabled epiphan_indev     && { { check_lib2 "windows.h" LoadLibrary; } || { check_lib2 "dlfcn.h" dlopen -ldl; } ||
-                                 die "ERROR: LoadLibrary/dlopen not found for epiphan"; }
 
 if enabled gcrypt; then
     GCRYPT_CONFIG="${cross_prefix}libgcrypt-config"
