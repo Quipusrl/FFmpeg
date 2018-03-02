@@ -469,7 +469,7 @@ static int add_video_device(AVFormatContext *s, AVCaptureDevice *video_device)
     pixel_format = [NSNumber numberWithUnsignedInt:pxl_fmt_spec.avf_id];
     if ([video_device hasMediaType:AVMediaTypeMuxed])
         capture_dict = @{
-            (id)AVVideoScalingModeKey : AVVideoScalingModeResizeAspectFill,
+            (id)AVVideoScalingModeKey : AVVideoScalingModeResizeAspect,
             (id)kCVPixelBufferPixelFormatTypeKey : pixel_format
         };
     else
